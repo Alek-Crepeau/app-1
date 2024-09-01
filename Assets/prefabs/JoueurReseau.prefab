@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 831813553101816629}
   - component: {fileID: 394374248246414950}
   - component: {fileID: 6702207925747319527}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -119,7 +119,7 @@ GameObject:
   - component: {fileID: 6295690598202354279}
   - component: {fileID: 8849462110644700935}
   - component: {fileID: 3240254186930058895}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: CameraFPS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -180,7 +180,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 55
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -222,7 +222,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1361232945638787965}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: ancrageCamera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -256,7 +256,7 @@ GameObject:
   - component: {fileID: 4265259245544129712}
   - component: {fileID: 6909327441954197235}
   - component: {fileID: 3818873038529798304}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Capsule
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -370,7 +370,7 @@ GameObject:
   - component: {fileID: 6303688003839958923}
   - component: {fileID: 7946489161629820323}
   - component: {fileID: 8626329068379475529}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: JoueurReseau
   m_TagString: Untagged
   m_Icon: {fileID: 0}

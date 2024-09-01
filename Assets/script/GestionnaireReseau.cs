@@ -18,6 +18,11 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
 
     GestionnaireInputs gestionnaireInputs;
 
+    // Tableau de couleurs à définir dans l'inspecteur
+    public Color[] couleurJoueurs;
+    // Pour compteur le nombre de joueurs connectés
+    public int nbJoueurs = 0;
+
 
     void Start()
     {
@@ -49,6 +54,7 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
             GameMode = mode,
             SessionName = "Chambre test",
             Scene = SceneRef.FromIndex(IndexSceneJeu),
+            PlayerCount = 10, //ici, on limite à 10 joueurs
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
     }
@@ -126,6 +132,16 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
         {
             Debug.Log("Un joueur s'est connecté comme serveur. Spawn d'un joueur");
             _runner.Spawn(joueurPrefab, Utilitaires.GetPositionSpawnAleatoire(), Quaternion.identity, player);
+
+            JoueurReseau leNouveuJoueur = _runner.Spawn(joueurPrefab, Utilitaires.GetPositionSpawnAleatoire(),
+                                           Quaternion.identity, player);
+            /*On change la variable maCouleur du nouveauJoueur et on augmente le nombre de joueurs connectés
+            Comme j'ai seulement 10 couleurs de définies, je m'assure de ne pas dépasser la longueur de mon
+            tableau*/
+            leNouveuJoueur.maCouleur = couleurJoueurs[nbJoueurs];
+            nbJoueurs++;
+            if (nbJoueurs >= 10) nbJoueurs = 0;
+
         }
         else
         {
@@ -167,7 +183,11 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
-        
+        if (shutdownReason == ShutdownReason.GameIsFull)
+        {
+            Debug.Log("Le maximum de joueur est atteint. Réessayer plus tard.");
+        }
+
     }
 
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message)

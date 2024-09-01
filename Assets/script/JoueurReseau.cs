@@ -17,16 +17,44 @@ using Fusion; // namespace pour utiliser les classes de Fusion
 public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
 {
     public static JoueurReseau Local; //.2
+    public Transform modeleJoueur;
+
+    [Networked] public Color maCouleur { get; set; }
+
+    /*
+    * Au départ, on change la couleur du joueur. La variable maCouleur sera définie
+    * par le serveur dans le script GestionnaireReseau.La fonction Start() sera appelée après la fonction Spawned().
+    */
+    private void Start()
+    {
+        GetComponentInChildren<MeshRenderer>().material.color = maCouleur;
+    }
+
 
     public override void Spawned() //3.
     {
         if (Object.HasInputAuthority)
         {
             Local = this;
+
+            //Si c'est le joueur du client, on appel la fonction pour le rendre invisible
+            Utilitaires.SetRenderLayerInChildren(modeleJoueur, LayerMask.NameToLayer("JoueurLocal"));
+
+            //On désactive la mainCamera. Assurez-vous que la caméra de départ possède bien le tag MainCamera
+            Camera.main.gameObject.SetActive(false);
+
             Debug.Log("Un joueur local a été créé");
         }
         else
         {
+            //Si le joueur créé est contrôlé par un autre joueur, on désactive le component caméra de cet objet
+            Camera camLocale = GetComponentInChildren<Camera>();
+            camLocale.enabled = false;
+
+            // On désactive aussi le component AudioListener
+            AudioListener audioListener = GetComponentInChildren<AudioListener>();
+            audioListener.enabled = false;
+
             Debug.Log("Un joueur réseau a été créé");
         }
     }
