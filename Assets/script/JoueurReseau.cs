@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 using Fusion; // namespace pour utiliser les classes de Fusion
 /* 
  * 1.Les objets réseau ne doivent pas dériver de MonoBehavior, mais bien de NetworkBehavior
@@ -19,7 +20,18 @@ public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
     public static JoueurReseau Local; //.2
     public Transform modeleJoueur;
 
+    [Networked] public string monNom { get; set; }
+
     [Networked] public Color maCouleur { get; set; }
+
+    // Variable pour le pointage (nombre de boules rouge) du joueur qui sera automatiquement synchronisé par le serveur sur tous les clients
+    // Lorsqu'un chanegement est détecté, la fonction OnChangementPointage sera automatiquement appelée pour faire
+    // une mise à jour de l'affichage du texte.
+    [Networked, OnChangedRender(nameof(OnChangementPointage))] public int nbBoulesRouges { get; set; }
+
+    // Variable pour mémoriser la zone de texte au dessus de la tête du joueur et qui afficher le pointage
+    // Cette variable doit être définie dans l'inspecteur de Unity
+    public TextMeshProUGUI affichagePointageJoueur;
 
     /*
     * Au départ, on change la couleur du joueur. La variable maCouleur sera définie
@@ -33,20 +45,31 @@ public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
 
     public override void Spawned() //3.
     {
+        GameManager.joueursPointagesData.Add(this, nbBoulesRouges);
+
         if (Object.HasInputAuthority)
         {
             Local = this;
+
+            /*À la création du joueur et s'il est le joueur local (HasInputAuthority), ont doit défénir son nom en allant
+          chercher la variable nomJoueurLocal du GameManager.
+          Pour que le nom soit synchronisé sur tous les clients, appelle d'une fonction RPC (RemoteProcedureCall) qui permet
+          de dire à tous les clients d'exécuter la fonction  "RPC_ChangementdeNom"
+          */
+            monNom = GameManager.nomJoueurLocal;
+            RPC_ChangementdeNom(monNom);
 
             //Si c'est le joueur du client, on appel la fonction pour le rendre invisible
             Utilitaires.SetRenderLayerInChildren(modeleJoueur, LayerMask.NameToLayer("JoueurLocal"));
 
             //On désactive la mainCamera. Assurez-vous que la caméra de départ possède bien le tag MainCamera
-            Camera.main.gameObject.SetActive(false);
+            //Camera.main.gameObject.SetActive(false);
 
             Debug.Log("Un joueur local a été créé");
         }
         else
         {
+
             //Si le joueur créé est contrôlé par un autre joueur, on désactive le component caméra de cet objet
             Camera camLocale = GetComponentInChildren<Camera>();
             camLocale.enabled = false;
@@ -57,6 +80,9 @@ public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
 
             Debug.Log("Un joueur réseau a été créé");
         }
+
+        // on affiche le nom du joueur créé et son pointage
+        affichagePointageJoueur.text = $"{monNom}:{nbBoulesRouges.ToString()}";
     }
 
     public void PlayerLeft(PlayerRef player) //.4
@@ -65,6 +91,31 @@ public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
         {
             Runner.Despawn(Object);
         }
+    }
+
+    /* Fonction appelée automatiquement lorsqu'un changement est détecté dans la variable nbBoulesRouges du joueur (variable Networked)
+    Mise à jour du pointage du joueur qui sera égal au nombre de boules rouges ramassées
+*/
+    public void OnChangementPointage()
+    {
+        affichagePointageJoueur.text = $"{monNom}:{nbBoulesRouges.ToString()}";
+    }
+
+    /* Fonction RPC (RemoteProcedureCall) déclenché par un joueur local qui permet la mise à jour du nom du joueur
+    sur tous les autres clients. La source (l'émetteur) est le joueur local (RpcSources.InputAuthority). La cible est tous les joueurs
+    connectés (RpcTargets.All). Le paramètre reçu contient le nom du joueur à défénir.
+    Pour bien comprendre : Mathieu se connecte au serveur en inscrivant son nom. Il envoir un message à tous les autres clients. Sur
+    chaque client, le joueur contrôlé par Mathieu exécutera cette fonction ce qui permettra une mise à jour du nom.
+    1. On définit la variable nomNom
+    2. On affiche le nom et le poitage au dessus de la tête du joueur.
+    */
+    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    public void RPC_ChangementdeNom(string leNom, RpcInfo infos = default)
+    {
+        //1.
+        monNom = leNom;
+        //2.
+        affichagePointageJoueur.text = $"{monNom}:{nbBoulesRouges.ToString()}";
     }
 }
 

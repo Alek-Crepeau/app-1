@@ -27,11 +27,12 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
     void Start()
     {
         // Création d'une partie dès le départ
-        CreationPartie(GameMode.AutoHostOrClient);
+        // CreationPartie(GameMode.AutoHostOrClient);
     }
 
     // Fonction asynchrone pour démarrer Fusion et créer une partie
-    async void CreationPartie(GameMode mode)
+
+    public async void CreationPartie(GameMode mode)
     {
         /*  1.Mémorisation du component NetworkRunner . On garde en mémoire
             la référence à ce component dans la variable _runner.
@@ -127,11 +128,11 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
     */
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-
+        print("OnPlayerjoin");
         if (_runner.IsServer)
         {
             Debug.Log("Un joueur s'est connecté comme serveur. Spawn d'un joueur");
-            _runner.Spawn(joueurPrefab, Utilitaires.GetPositionSpawnAleatoire(), Quaternion.identity, player);
+            //_runner.Spawn(joueurPrefab, Utilitaires.GetPositionSpawnAleatoire(), Quaternion.identity, player);
 
             JoueurReseau leNouveuJoueur = _runner.Spawn(joueurPrefab, Utilitaires.GetPositionSpawnAleatoire(),
                                            Quaternion.identity, player);
