@@ -23,6 +23,9 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
     // Pour compteur le nombre de joueurs connectés
     public int nbJoueurs = 0;
 
+    public SphereCollision sphereCollision; // référence au prefab de la boule rouge
+    public bool spheresDejaSpawn; // Permet de savoir les boules ont déjà été créées.
+
 
     void Start()
     {
@@ -194,5 +197,21 @@ public class GestionnaireReseau : MonoBehaviour , INetworkRunnerCallbacks
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message)
     {
         
-    }  
+    }
+
+    /* Fonction exécuté sur le serveur seulement qui spawn le nombre de boules rouges déterminés au lancement
+   d'une nouvelle partie.
+   */
+    public void CreationBoulleRouge()
+    {
+        if (_runner.IsServer && !spheresDejaSpawn)
+        {
+            GameManager.partieEnCours = true;
+            for (int i = 0; i < GameManager.instance.nbBoulesRougesDepart; i++)
+            {
+                _runner.Spawn(sphereCollision, Utilitaires.GetPositionSpawnAleatoire(), Quaternion.identity);
+            }
+            spheresDejaSpawn = true;
+        }
+    }
 }

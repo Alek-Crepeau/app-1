@@ -15,15 +15,19 @@ using Fusion; // namespace pour utiliser les classes de Fusion
  * Retourne false pour les autres clients
  * 4. Lorsqu'un joueur se déconnecte du réseau, on élimine (Despawn) son joueur.
  */
-public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
+public class JoueurReseau : NetworkBehaviour, IPlayerLeft, IDespawned //1.
 {
     public static JoueurReseau Local; //.2
     public Transform modeleJoueur;
 
-    // Variable est mise à true lorsque tous les joueurs sont prêts à reprendre une nouvelle partie
-    // Il s'agit d'une variable synchronisée sur toues les clients. Lorsqu'un changement est détecté
-    // la fonctionne OnNouvellePartie() sera exécutée.
-    [Networked, OnChangedRender(nameof(OnNouvellePartie))] public bool recommence { get; set; }
+    //Lorsqu'un joueur est prêt pour une nouvelle partie (il appuyé sur R), on met cette variable à true
+    // ce qui déclenchera l'appel de la fonction OnPretAReprendre sur tous les clients connectés.
+    [Networked, OnChangedRender(nameof(OnPretAReprendre))] public bool pretNouvellePartie { get; set; }
+
+    public static int nbClientsPret; // Pour compteur le nombre de joueurs qui sont prêts à reprendre
+
+    // Référence au script GestionnaireInput (pour savoir si touche R a été enfoncée)
+    GestionnaireInputs gestionnaireInputs;
 
     [Networked] public string monNom { get; set; }
 
@@ -45,6 +49,7 @@ public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
     private void Start()
     {
         GetComponentInChildren<MeshRenderer>().material.color = maCouleur;
+        gestionnaireInputs = GetComponent<GestionnaireInputs>(); //On récupère le component GestionnaireInput
     }
 
 
@@ -88,6 +93,22 @@ public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
 
         // on affiche le nom du joueur créé et son pointage
         affichagePointageJoueur.text = $"{monNom}:{nbBoulesRouges.ToString()}";
+
+        /* Au moment où un joueur est crée, on vérifie s'il est seul. Si c'est le cas, on appelle la fonction
+      AfficheAttenteAutreJoueur du GameManager. S'il y a plus d'un joueur, on appelle la fonction qui permet
+      de créer les boules rouges. Notez bien que la fonction NouvellesBoulesRouges sera appelée uniquement
+      par le serveur (Runner.IsServer)
+      */
+        if (Runner.SessionInfo.PlayerCount == 1)
+        {
+            GameManager.instance.AfficheAttenteAutreJoueur(true);
+        }
+        else if (Runner.SessionInfo.PlayerCount > 1)
+        {
+            GameManager.instance.AfficheAttenteAutreJoueur(false);
+            if (Runner.IsServer) GameManager.instance.NouvellesBoulesRouges();
+        }
+
     }
 
     public void PlayerLeft(PlayerRef player) //.4
@@ -134,31 +155,85 @@ public class JoueurReseau : NetworkBehaviour, IPlayerLeft //1.
 
     /* Fonction appelée par le GameManager lorsque tous les joueurs sont prêts et qu'il faut relancer
    une nouvelle partie.
+   1. Réinitialisation des différentes variables
+   2. On s'assure que le joueur n'est pas seul. S'il l'est, on affiche le paneau d'attente d'un autre joueur
+   et on renvoie true au GameMananger pour ne pas que des boules soit créées.
+   3. Si on se rend ici, c'est que le joueur n'est pas seul. On retoure alors false au GameManager.
   */
-    public void Recommence()
+    public bool Recommence()
     {
-        recommence = true;
+        //1.
+        GetComponent<GestionnaireInputs>().pretARecommencer = false;
+        nbBoulesRouges = 0;
+        pretNouvellePartie = false;
+        nbClientsPret = 0;
+        //2.
+        if (Runner.SessionInfo.PlayerCount == 1)
+        {
+            GameManager.instance.AfficheAttenteAutreJoueur(true);
+            return true;
+        }
+        //3.
+        return false;
     }
 
-    /* Fonction appelée lorsque la variable réseau recommence = true.
-    1. Si c'est le joueur local (hasInputAuthority), on désactive les panneux de victoire et d'attente
-    2. Si la variable recommence est bien égale à true, on remet différentes variales à leur valeur
-    de base, c'est-à-dire celle qu'elles doivent avoir en début de partie, comme le nbBoulesRouges = 0;
+    /* Le joueur vérifie si la partie est terminée et qu'il n'est pas déjà prêt à reprendre. Si c'est le cas:
+   - On va chercher les dernier input et on vérifie si pretARejouer = true. Ce sera le cas si le joueur à appuyé
+   sur la touche R.
+   - Si le joueur est prêt à rejouer :
+   - On met la variable réseau PretNouvelle partie à true. La variable est synchronisée sur tous les clients
+   qui appeleront la fonction OnPretAReprendre du JoueurReseau. On remet les variables pretARecommencer du
+   gestionneInput à false et pretArejouer du donneesInputReseau à false également.
    */
-    public void OnNouvellePartie()
+    public override void FixedUpdateNetwork()
     {
-        if (Object.HasInputAuthority)
+        if (!GameManager.partieEnCours && !pretNouvellePartie)
         {
-            GameManager.instance.refPanelAttente.SetActive(false);
-            GameManager.instance.refPanelGagnant.SetActive(false);
+            GetInput(out DonneesInputReseau donneesInputReseau);
+            if (donneesInputReseau.pretARejouer)
+            {
+                pretNouvellePartie = true;
+                gestionnaireInputs.pretARecommencer = false;
+                donneesInputReseau.pretARejouer = false;
+            }
         }
-        if (recommence)
+    }
+
+    /* Fonction appelée automatiquement sur tous les clients lorsque la variable pretNouvellePartie est modifée.
+   - Le reste du code s'exécute seulement sur le serveur (if(Runner.IsServer))
+   - On ajoute 1 à la variable nbClientsPret;
+   - On récupère le nombre de joueurs connectés;
+   - Si tout le monde est prête, on appelle la fonction RPC_OnNouvellePartie() qui est un Remote Procedure Call
+   */
+    public void OnPretAReprendre()
+    {
+        if (Runner.IsServer)
         {
-            GetComponent<GestionnaireInputs>().pretARecommencer = false;
-            nbBoulesRouges = 0;
-            GameManager.partieEnCours = true;
-            recommence = false;
+            nbClientsPret++;
+            int nbJoueursTotal = Runner.SessionInfo.PlayerCount;
+            if (nbClientsPret >= nbJoueursTotal)
+            {
+                RPC_OnNouvellePartie();
+            }
         }
+    }
+
+    /* Fonction RPC (remote procedure call) qui sera exécuté par tous les clients (RpcTargets.All))
+   Tous les joueurs connectés exécuteront ainsi la fonction du GameManager DebutNouvellePartie
+   */
+    [Rpc(RpcSources.All, RpcTargets.All)]
+    public void RPC_OnNouvellePartie(RpcInfo infos = default)
+    {
+        GameManager.instance.DebutNouvellePartie();
+    }
+
+    // Fonction exécutée lorsqu'un JoueurReseau est despawned. Soit lorsqu'il quitte volontairement ou
+    // encore quand la connection au serveur est interrompue pour une autre raison.
+    // Quand cela se produit, on s'assure de mettre à jour notre dictionnaire JoueursPointagesData en
+    // supprimant la référence au joueur déconnecté.
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        GameManager.joueursPointagesData.Remove(this);
     }
 }
 
