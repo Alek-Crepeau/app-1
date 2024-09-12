@@ -20,6 +20,8 @@ public class GestionnaireInputs : MonoBehaviour
     bool ilSaute;
     GestionnaireCameraLocale gestionnaireCameraLocale;
     public bool pretARecommencer;
+    bool ilTir = false; // Détection locale du clic de souris.
+    GestionnaireMouvementPersonnage gestionnaireMouvementPersonnage; // référence au script de mouvement
 
     /*
      * Avant le Start(), on mémorise la référence au component GestionnaireCameraLocale de la caméra du joueur
@@ -27,6 +29,7 @@ public class GestionnaireInputs : MonoBehaviour
     void Awake()
     {
         gestionnaireCameraLocale = GetComponentInChildren<GestionnaireCameraLocale>();
+        gestionnaireMouvementPersonnage = GetComponent<GestionnaireMouvementPersonnage>();
     }
 
     /*
@@ -48,6 +51,10 @@ public class GestionnaireInputs : MonoBehaviour
      */
     void Update()
     {
+        // Optimisation : on exécute seulement le Update si le client contrôle ce joueur
+        if (!gestionnaireMouvementPersonnage.Object.HasInputAuthority)
+            return;
+
         // Déplacement
         mouvementInputVecteur.x = Input.GetAxis("Horizontal");
         mouvementInputVecteur.y = Input.GetAxis("Vertical");
@@ -60,6 +67,10 @@ public class GestionnaireInputs : MonoBehaviour
         //Saut
         if (Input.GetButtonDown("Jump"))
             ilSaute = true;
+
+        //Tir
+        if (Input.GetButtonDown("Fire1"))
+            ilTir = true;
 
         // Si la partie n'est pas en cours (donc terminée!) on écoute la toucher R. Quand la touche
         // est enfoncée, on met la variable pretARecommencer à true.
@@ -91,7 +102,10 @@ public class GestionnaireInputs : MonoBehaviour
         donneesInputReseau.mouvementInput = mouvementInputVecteur;
         donneesInputReseau.vecteurDevant = gestionnaireCameraLocale.gameObject.transform.forward;
         donneesInputReseau.saute = ilSaute;
+        donneesInputReseau.appuieBoutonTir = ilTir;
+
         ilSaute = false;
+        ilTir = false;
 
         donneesInputReseau.pretARejouer = pretARecommencer;
 
